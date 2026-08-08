@@ -48,6 +48,13 @@ spec:
           type: StrategicMerge
           value:
             spec:
+              # replicas 수 == 배치 가능한 워커 수 + 노드당 하나(required anti-affinity) 조합이라
+              # 기본값(maxSurge 1)으로는 새 파드를 올릴 노드가 없어 롤아웃이 영구히 멈춘다.
+              # 먼저 하나 내리고 그 자리에 새로 올리도록 surge를 0으로 둔다.
+              strategy:
+                rollingUpdate:
+                  maxSurge: 0
+                  maxUnavailable: 1
               template:
                 spec:
                   affinity:
