@@ -18,12 +18,12 @@ namespaces:
 
   - name: es-ns
     quota:
-      # Elasticsearch 1개 + 운영 여유 1개
-      pods: "2"
-      requests.cpu: "500m"
-      requests.memory: 2Gi
-      limits.cpu: "2"
-      limits.memory: 2Gi
+      # elastic-operator(상주, requests 100m/150Mi, limits 500m/512Mi) + Elasticsearch 1개 + 운영 여유
+      pods: "3"
+      requests.cpu: "700m"
+      requests.memory: 2560Mi
+      limits.cpu: "3"
+      limits.memory: 3Gi
     limitRange:
       defaultRequest: { cpu: 200m, memory: 512Mi }
       default:        { cpu: 1000m, memory: 2Gi }
