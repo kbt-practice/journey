@@ -50,6 +50,8 @@ eck-elasticsearch:
         - metadata:
             name: elasticsearch-data
           spec:
+            # portainer의 프로비저너 재사용
+            storageClassName: portainer-local-path
             accessModes:
               - ReadWriteOnce
             resources:
