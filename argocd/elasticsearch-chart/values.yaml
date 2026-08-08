@@ -9,6 +9,9 @@ eck-elasticsearch:
   image: mingkiboo/amumal-es-nori:9.4.2
 
   http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
     service:
       spec:
         type: ClusterIP
