@@ -1,7 +1,11 @@
 # =====================================================================
 # eck-elasticsearch 0.20.0
-#  - backend(backend-ns)와 다른 네임스페이스(es-ns)에 있어 ECK가 만드는 elastic 유저 Secret을 backend가 못 참조한다.
-#    클러스터 내부 통신만 쓰는 전제로 X-Pack 보안(인증/TLS)을 아예 비활성화해 이 문제를 피한다.
+#  - xpack.security.*는 ECK가 예약한 설정이라 사용자가 끄면 안 된다.
+#    끄면 ECK가 넣는 file settings의 role_mappings를 파싱할 핸들러가 없어져
+#    file settings 적용이 영구 실패하고, 그 결과 ES readiness 포트(8080)가
+#    열리지 않아 pod가 영원히 0/1에 머무른다. (인증은 켠 채로 운용)
+#  - backend(backend-ns)는 es-ns의 elastic 유저 Secret을 직접 참조할 수 없어
+#    (Secret은 네임스페이스 간 참조 불가) 자격증명을 backend-ns Secret에 복사해서 쓴다.
 # =====================================================================
 eck-elasticsearch:
   fullnameOverride: amumal-search
@@ -9,6 +13,8 @@ eck-elasticsearch:
   image: mingkiboo/amumal-es-nori:9.4.2
 
   http:
+    # ClusterIP로만 노출되는 클러스터 내부 통신이라 HTTP 구간은 평문으로 둔다.
+    # (CA를 backend에 배포하는 부담을 피하려는 것이고, 인증과 노드 간 transport TLS는 그대로 유지된다.)
     tls:
       selfSignedCertificate:
         disabled: true
@@ -23,9 +29,6 @@ eck-elasticsearch:
       count: 1
       config:
         node.store.allow_mmap: false
-        xpack.security.enabled: false
-        xpack.security.http.ssl.enabled: false
-        xpack.security.transport.ssl.enabled: false
       podTemplate:
         spec:
           # regcred는 backend-ns에 있는 Secret이라 여기서 못 쓴다 (Secret은 네임스페이스 간 참조 불가).
