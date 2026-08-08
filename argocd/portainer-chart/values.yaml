@@ -77,4 +77,7 @@ gateway:
 host: portainer.sub.amon.p-e.kr
 
 # IP 화이트리스트 (portainer는 잠겨도 argocd로 접근 가능 -> 차트 포함 안전)
-allowedCIDR: 211.244.225.224/32
+# 추가할 IP는 CIDR 표기로 한 줄씩 넣는다 (단일 IP는 /32).
+allowedCIDRs:
+  - 211.244.225.224/32
+  - 1.225.136.90/32
