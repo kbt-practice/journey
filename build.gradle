@@ -68,7 +68,7 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform {
-		excludeTags 'integration'
+		excludeTags 'integration', 'search-benchmark'
 	}
 }
 
@@ -83,4 +83,31 @@ tasks.register('integrationTest', Test) {
 	}
 
 	shouldRunAfter tasks.named('test')
+}
+
+// amumal-dev의 전용 벤치마크 DB/인덱스를 사용한다. MySQL은 임시 로컬 중계를 거친다.
+tasks.register('searchBenchmark', Test) {
+	description = 'Runs isolated LIKE vs ES benchmarks up to one million posts.'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform { includeTags 'search-benchmark' }
+	include '**/PostSearchPerformanceBenchmarkTest.class'
+	systemProperty 'search.index-name', 'posts-search-benchmark'
+	environment 'SPRING_ELASTICSEARCH_URIS', 'http://127.0.0.1:9200'
+	maxHeapSize = '1g'
+	maxParallelForks = 1
+	outputs.upToDateWhen { false }
+	environment 'SPRING_DATASOURCE_URL', 'jdbc:mysql://127.0.0.1:13316/search_benchmark?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&rewriteBatchedStatements=true'
+	environment 'DB_HOST', '127.0.0.1'
+	environment 'DB_PORT', '13316'
+	environment 'DB_NAME', 'search_benchmark'
+	environment 'DB_USERNAME', 'search_benchmark'
+	environment 'DB_PASSWORD', 'benchmark'
+	environment 'DDL_AUTO_SET', 'create-drop'
+	environment 'ES_HOST', '127.0.0.1'
+	environment 'ES_PORT', '9200'
+	environment 'ES_USERNAME', ''
+	environment 'ES_PASSWORD', ''
+	testLogging { showStandardStreams = true }
 }
