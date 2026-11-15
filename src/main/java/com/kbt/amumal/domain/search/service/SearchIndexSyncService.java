@@ -36,16 +36,24 @@ public class SearchIndexSyncService {
     private int configuredBatchSize;
 
     // 설정된 주기마다(기본 5분) 배치 크기만큼 dirty 큐를 처리하는 스케줄 진입점
-    @Scheduled(fixedDelayString = "${search.sync.fixed-delay-ms:300000}")
+    @Scheduled(fixedDelayString = "${search.sync.fixed-delay-ms:300000}",
+            initialDelayString = "${search.sync.initial-delay-ms:0}")
     public void synchronizeDirtyPosts() {
         synchronizeNextBatch(configuredBatchSize);
     }
 
     // dirty 큐에서 한 배치를 선점해 MySQL 최신 상태로 ES를 갱신/삭제하고, 처리한 건수를 반환
     public int synchronizeNextBatch(int batchSize) {
+        long startedAt = System.nanoTime();
+        log.info("검색 증분 색인 시작 - 최대 {}건", batchSize);
         // 1. dirty 큐에서 배치를 선점 (SearchDirtyBatchService.claimNextBatch 참고 - 리스 방식)
         List<SearchIndexDirty> targets = dirtyBatchService.claimNextBatch(batchSize);
-        if (targets.isEmpty()) return 0;
+        if (targets.isEmpty()) {
+            log.info("검색 증분 색인 종료 - 처리 가능한 대상 0건, 소요 {}ms",
+                    (System.nanoTime() - startedAt) / 1_000_000);
+            return 0;
+        }
+        log.info("검색 증분 색인 대상 선점 - 대상 {}건", targets.size());
 
         // 2. 대상 postId들의 최신 MySQL 상태를 한 번에 조회 (postId당 쿼리 N번이 아니라 IN 절 1번)
         List<Integer> postIds = targets.stream().map(SearchIndexDirty::getPostId).toList();
@@ -83,10 +91,12 @@ public class SearchIndexSyncService {
             indexGateway.saveAll(documents);
             indexGateway.deleteAll(deletedPostIds);
             dirtyBatchService.complete(targets);
-            log.info("검색 증분 색인 완료 - 갱신 {}개, 삭제 {}개", documents.size(), deletedPostIds.size());
+            log.info("검색 증분 색인 완료 - 갱신 {}개, 삭제 {}개, 소요 {}ms",
+                    documents.size(), deletedPostIds.size(), (System.nanoTime() - startedAt) / 1_000_000);
         } catch (RuntimeException exception) {
             dirtyBatchService.recordFailure(targets, exception);
-            log.error("검색 증분 색인 실패 - 대상 {}개", targets.size(), exception);
+            log.error("검색 증분 색인 실패 - 대상 {}개, 소요 {}ms",
+                    targets.size(), (System.nanoTime() - startedAt) / 1_000_000, exception);
         }
 
         return targets.size();
